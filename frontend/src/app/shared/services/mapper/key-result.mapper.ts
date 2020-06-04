@@ -4,7 +4,8 @@ import { map } from 'rxjs/operators';
 import { KeyResultDto } from '../../model/api/key-result.dto';
 import { ViewKeyResult } from '../../model/ui/view-key-result';
 import { KeyResultApiService } from '../api/key-result-api.service';
-import { ObjectiveId } from '../../model/api/objective.dto';
+import { ObjectiveId } from '../../model/id-types';
+import { Unit } from '../../model/api/unit.enum';
 
 @Injectable({
   providedIn: 'root'
@@ -17,7 +18,7 @@ export class KeyResultMapper {
       startValue: viewKeyResult.start,
       currentValue: viewKeyResult.current,
       targetValue: viewKeyResult.end,
-      unit: viewKeyResult.unit,
+      unit: Unit[viewKeyResult.unit],
       title: viewKeyResult.keyResult,
       description: viewKeyResult.description
     };
@@ -29,7 +30,7 @@ export class KeyResultMapper {
       keyResult.startValue,
       keyResult.currentValue,
       keyResult.targetValue,
-      keyResult.unit,
+      Unit[keyResult.unit],
       keyResult.title,
       keyResult.description,
       keyResult.parentObjectiveId,
@@ -37,7 +38,7 @@ export class KeyResultMapper {
     );
   }
 
-  getKeyResultsForObjective(objectiveId: ObjectiveId): Observable<ViewKeyResult[]> {
+  getKeyResultsForObjective$(objectiveId: ObjectiveId): Observable<ViewKeyResult[]> {
     return this.keyResultApiService.getKeyResultsForObjective$(objectiveId)
       .pipe(
       map((keyResultList: KeyResultDto[]) => {

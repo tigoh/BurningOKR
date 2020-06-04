@@ -2,7 +2,6 @@ import {
   ContextRole,
   DepartmentContextRoleService
 } from '../../shared/services/helper/department-context-role.service';
-import { CompanyId } from '../../shared/model/api/company.dto';
 import { filter, switchMap, take } from 'rxjs/operators';
 import { CurrentOkrviewService } from '../current-okrview.service';
 import { CycleUnit } from '../../shared/model/ui/cycle-unit';
@@ -12,9 +11,13 @@ import { MatDialog, MatDialogRef } from '@angular/material';
 import { DepartmentUnit } from '../../shared/model/ui/OrganizationalUnit/department-unit';
 import { ActivatedRoute } from '@angular/router';
 import { ExcelMapper } from '../excel-file/excel.mapper';
-import { ObservableInput, Subscription } from 'rxjs';
+import { Observable, ObservableInput, Subscription } from 'rxjs';
 import { CompanyUnit } from '../../shared/model/ui/OrganizationalUnit/company-unit';
 import { SubstructureFormComponent } from '../substructure/substructure-form/substructure-form.component';
+import { CurrentDepartmentStructureService } from '../current-department-structure.service';
+import { CurrentCompanyService } from '../current-company.service';
+import { CurrentCycleService } from '../current-cycle.service';
+import { CompanyId } from '../../shared/model/id-types';
 
 @Component({
   selector: 'app-company',
@@ -27,7 +30,7 @@ export class CompanyComponent implements OnInit, OnDestroy {
   cycle: CycleUnit;
 
   subscriptions: Subscription[] = [];
-  currentUserRole: ContextRole = new ContextRole();
+  currentUserRole$: Observable<ContextRole>;
 
   currentlyMemberDepartmentIds: number[] = [];
   currentlyManagerDepartmentIds: number[] = [];
@@ -35,6 +38,9 @@ export class CompanyComponent implements OnInit, OnDestroy {
   constructor(
     private route: ActivatedRoute,
     private currentOkrViewService: CurrentOkrviewService,
+    private currentDepartmentStructureService: CurrentDepartmentStructureService,
+    private currentCompanyService: CurrentCompanyService,
+    private currentCycleService: CurrentCycleService,
     private matDialog: MatDialog,
     private roleService: DepartmentContextRoleService,
     private excelFileService: ExcelMapper
@@ -42,25 +48,26 @@ export class CompanyComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.currentUserRole$ = this.roleService.getRoleWithoutContext$();
+
     this.subscriptions.push(
       this.route.paramMap.subscribe(params => {
         this.companyId = +params.get('companyId');
         this.currentOkrViewService.browseCompany(this.companyId);
-        this.currentUserRole = this.roleService.getRoleWithoutContext();
       })
     );
     this.subscriptions.push(
-      this.currentOkrViewService.getCurrentCompany$()
+      this.currentCompanyService.getCurrentCompany$()
         .subscribe(company => (this.company = company))
     );
     this.subscriptions.push(
-      this.currentOkrViewService.getCurrentCycle$()
+      this.currentCycleService.getCurrentCycle$()
         .subscribe(currentCycle => (this.cycle = currentCycle))
     );
     this.subscriptions.push(
-      this.currentOkrViewService
-        .getCurrentDepartmentStructureList$()
-        .subscribe(structureList => this.calculateMembershipDepartmentIds(structureList))
+      this.currentDepartmentStructureService
+        .getCurrentDepartmentStructures$()
+        .subscribe(structures => this.calculateMembershipDepartmentIds(structures))
     );
   }
 
@@ -69,16 +76,16 @@ export class CompanyComponent implements OnInit, OnDestroy {
     this.subscriptions = [];
   }
 
-  calculateMembershipDepartmentIds(structureList: DepartmentStructure[]): void {
+  calculateMembershipDepartmentIds(structures: DepartmentStructure[]): void {
     this.currentlyManagerDepartmentIds = [];
     this.currentlyMemberDepartmentIds = [];
 
-    this.categorizeDepartmentStructureMemberships(structureList);
+    this.categorizeDepartmentStructureMemberships(structures);
   }
 
-  categorizeDepartmentStructureMemberships(currentStructureList: DepartmentStructure[]): void {
-    if (currentStructureList) {
-      currentStructureList.forEach(structure => {
+  categorizeDepartmentStructureMemberships(currentStructures: DepartmentStructure[]): void {
+    if (currentStructures) {
+      currentStructures.forEach(structure => {
         if (structure.userRole === DepartmentStructureRole.MEMBER) {
           this.currentlyMemberDepartmentIds.push(structure.id);
         } else if (structure.userRole === DepartmentStructureRole.MANAGER) {

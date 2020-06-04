@@ -18,6 +18,7 @@ import {
 import { CurrentOkrviewService } from '../../current-okrview.service';
 import { ExcelMapper } from '../../excel-file/excel.mapper';
 import { I18n } from '@ngx-translate/i18n-polyfill';
+import { CurrentCycleService } from '../../current-cycle.service';
 
 interface DepartmentView {
   cycle: CycleUnit;
@@ -36,7 +37,7 @@ export class DepartmentComponent implements OnInit, OnDestroy {
   cycle$: Observable<CycleUnit>;
   departmentView$: Observable<DepartmentView>;
   department$: Observable<DepartmentUnit>;
-  hasFinishedLoading$: Subject<boolean> = new BehaviorSubject<boolean>(false);
+  private componentLoaded$: Subject<boolean> = new BehaviorSubject<boolean>(false);
 
   subscriptions: Subscription[] = [];
 
@@ -47,36 +48,42 @@ export class DepartmentComponent implements OnInit, OnDestroy {
     private router: Router,
     private route: ActivatedRoute,
     private currentOkrViewService: CurrentOkrviewService,
+    private currentCycleService: CurrentCycleService,
     private excelService: ExcelMapper,
     private i18n: I18n
   ) {}
 
   ngOnInit(): void {
-    this.department$ = this.getDepartment$();
-
-    this.cycle$ = this.currentOkrViewService.getCurrentCycle$();
-
-    this.currentUserRole$ = this.getCurrentUserRole$();
-
-    this.departmentView$ = this.getCombinedObservable$();
+    this.updateView();
   }
 
-  private getCurrentUserRole$(): Observable<ContextRole> {
-    return this.department$
+  private updateView(): void {
+    this.updateDepartment();
+    this.updateCurrentCycle();
+    this.updateCurrentUserRole();
+    this.updateDepartmentViewAndComponentLoaded();
+  }
+
+  private updateCurrentUserRole(): void {
+    this.currentUserRole$ =  this.department$
       .pipe(
         switchMap(department => {
-          return this.departmentContextRoleService.getContextRoleForDepartment(department);
+          return this.departmentContextRoleService.getContextRoleForDepartment$(department);
         })
       );
   }
 
-  private getDepartment$(): Observable<DepartmentUnit> {
-    return this.route.paramMap
+  private updateCurrentCycle(): void {
+    this.cycle$ = this.currentCycleService.getCurrentCycle$();
+  }
+
+  private updateDepartment(): void {
+    this.department$ = this.route.paramMap
       .pipe(
         switchMap(params => {
           const departmentId: number = +params.get('departmentId');
           this.currentOkrViewService.browseDepartment(departmentId);
-          this.hasFinishedLoading$.next(false);
+          this.componentLoaded$.next(false);
 
           return this.departmentMapperService.getDepartmentById$(departmentId);
         }),
@@ -86,8 +93,8 @@ export class DepartmentComponent implements OnInit, OnDestroy {
       );
   }
 
-  private getCombinedObservable$(): Observable<DepartmentView> {
-    return combineLatest([
+  private updateDepartmentViewAndComponentLoaded(): void {
+    this.departmentView$ = combineLatest([
       this.department$,
       this.cycle$,
       this.currentUserRole$
@@ -103,7 +110,7 @@ export class DepartmentComponent implements OnInit, OnDestroy {
           return info;
         })),
         tap(_ => {
-          this.hasFinishedLoading$.next(true);
+          this.componentLoaded$.next(true);
         })
       );
   }
@@ -128,7 +135,7 @@ export class DepartmentComponent implements OnInit, OnDestroy {
 
   onDepartmentEdited(department: DepartmentUnit): void {
     this.currentOkrViewService.refreshCurrentDepartmentView(this.department.id);
-    this.department = department;
+    this.updateView();
   }
 
   toggleWhetherDepartmentIsActive(): void {

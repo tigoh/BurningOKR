@@ -10,9 +10,9 @@ import { switchMap, take } from 'rxjs/operators';
 import { User } from '../../../../shared/model/api/user';
 import { NGXLogger } from 'ngx-logger';
 import { passwordMatchValidatorFunction } from '../set-password/passwords-match-validator-function';
-import { wrongPasswordValidatorError } from '../../../../shared/validators/wrong-password-validator-error';
+import { wrongPasswordValidatorError } from '../../../../shared/validators/errors/wrong-password-validator-error';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Consts } from '../../../../shared/consts'
+import { Consts } from '../../../../shared/consts';
 
 @Component({
   selector: 'app-change-password-dialog',
@@ -52,7 +52,7 @@ export class ChangePasswordDialogComponent implements OnInit {
 
   saveAndClose(): void {
     const controls: Controls<NewPasswordForm> = this.newPasswordForm.controls;
-    this.currentUserService.getCurrentUser()
+    this.currentUserService.getCurrentUser$()
       .pipe(
         switchMap((user: User) => {
           return this.passwordService.setPasswordWhileUserIsLoggedin$({

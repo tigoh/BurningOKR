@@ -1,9 +1,11 @@
+// istanbul ignore file
 import { Injectable } from '@angular/core';
 import { ApiHttpService } from '../../../core/services/api-http.service';
 import { Observable } from 'rxjs';
-import { CompanyDto, CompanyId } from '../../model/api/company.dto';
 import { DepartmentStructureDto } from '../../model/api/department-structure.dto';
 import { CycleDto } from '../../model/api/cycle.dto';
+import { CompanyDto } from '../../model/api/company.dto';
+import { CompanyId } from '../../model/id-types';
 
 @Injectable({
   providedIn: 'root'
@@ -27,7 +29,7 @@ export class CompanyApiService {
     return this.api.getData$<CompanyDto>(`companies/${companyId}`);
   }
 
-  getDepartmentStructureOfCompany$(companyId: CompanyId): Observable<DepartmentStructureDto[]> {
+  getDepartmentStructuresOfCompany$(companyId: CompanyId): Observable<DepartmentStructureDto[]> {
     return this.api.getData$(`companies/${companyId}/structure`);
   }
 
